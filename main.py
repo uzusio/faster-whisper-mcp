@@ -1,5 +1,6 @@
 import sys
 import os
+import argparse
 from dotenv import load_dotenv
 from genSrt import transcribe_video, download_video
 from translator import Translator
@@ -11,17 +12,20 @@ def setup(translate_to_lang: str = 'none'):
     return translator
 
 def main():
-    if len(sys.argv) < 2:
-        print('Usage: python main.py [ video_url | video_path ] [(optional)translate_to_lang]')
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Transcribe and translate videos.")
+    parser.add_argument('input', type=str, help='URL or local path of the video')
+    parser.add_argument('--device', type=str, choices=['cuda', 'cpu'], default='cuda', help='Device to use for inference (default: cuda)')
+    parser.add_argument('--lang', type=str, default='none', help='Language to translate the subtitles to (default: none)')
 
-    input_arg = sys.argv[1]  # URL or local path
+    args = parser.parse_args()
+
+    input_arg = args.input
+    device = args.device
+    translate_to_lang = args.lang
     
     tranlator = None
-    translate_to_lang = 'none'
-    if len(sys.argv) > 2:
-        translate_to_lang = sys.argv[2]
-        tranlator = setup(translate_to_lang)
+    if translate_to_lang != 'none':
+        translator = setup(translate_to_lang)
 
     # URLで始まる場合
     if input_arg.startswith("https://"):
@@ -37,7 +41,7 @@ def main():
         video_extension = os.path.splitext(downloaded_file_path)[1][1:]
 
     print(f"output_path: {output_path}")
-    transcribe_video(downloaded_file_path, output_path, tranlator, translate_to_lang)
+    transcribe_video(downloaded_file_path, output_path, translator, translate_to_lang, device)
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,4 @@
-# GenSrtForFasterWhisper ローカル字幕高速生成ツール
+# GenSrtForFasterWhisper 高品質な動画字幕生成ツール
 
 ## 概要
 
@@ -46,17 +46,70 @@ Faster WhisperはCUDA Toolkit 12.X 系には対応していないため、11.X �
 
 ## 使い方
 
-### genSrt.py
-
 このスクリプトは動画から字幕を生成します。
 
-#### 依存関係
+### 依存関係
 
 `Pipfile` に記載されています。
 
-#### 使用例
+### 使用例
+
+このスクリプトを実行するには、以下のようにコマンドライン引数を指定してください。
+
+#### 基本的な使用方法（デフォルトはGPUを使用）
+
+```sh
+python main.py [video_url | video_path]
 ```
-python python main.py [ video_url | video_path ] [(optional)translate_to_lang]
+
+#### デバイスを指定して実行する（GPUまたはCPU）
+
+```sh
+python main.py [video_url | video_path] --device [cuda | cpu]
+```
+
+#### 翻訳言語を指定して実行する
+
+```sh
+python main.py [video_url | video_path] --lang [language_code]
+```
+
+#### デバイスと翻訳言語の両方を指定して実行する
+
+```sh
+python main.py [video_url | video_path] --device [cuda | cpu] --lang [language_code]
+```
+
+### コマンドライン引数
+
+- `input` : 動画のURLまたはローカルパスを指定します。
+- `--device` : 使用するデバイスを指定します。`cuda`（デフォルト）または`cpu`を選択できます。
+- `--lang` : 字幕を翻訳する言語のコードを指定します。デフォルトは`none`で翻訳なし。
+
+### 例
+
+#### GPUを使用してローカルファイルを処理する
+
+```sh
+python main.py video.mp4
+```
+
+#### CPUを使用してURLから動画を処理する
+
+```sh
+python main.py https://example.com/video.mp4 --device cpu
+```
+
+#### GPUを使用して動画を処理し、日本語に翻訳する
+
+```sh
+python main.py video.mp4 --lang ja
+```
+
+#### CPUを使用してURLから動画を処理し、スペイン語に翻訳する
+
+```sh
+python main.py https://example.com/video.mp4 --device cpu --lang es
 ```
 
 ## 依存関係のインストール
@@ -89,3 +142,6 @@ pipenv shell
 
 これで、プロジェクトに必要なすべての依存関係がインストールされ、仮想環境が有効になります。
 
+## ToDo
+- [x] MacやCuda以外の環境向けにCPUに対応
+- [ ] Whisper APIを用いた実装
