@@ -1,147 +1,175 @@
-# GenSrtForFasterWhisper 高品質な動画字幕生成ツール
+# faster-whisper-mcp
 
-## 概要
+動画ファイルから高品質な字幕を生成するMCPサーバ＆CLIツール。[Faster Whisper](https://github.com/guillaumekln/faster-whisper)を使用し、ローカルGPU/CPUで高速に音声認識を実行します。
 
-動画ファイルから字幕を高速に生成するためのPythonツールです。このツールは[Faster Whisper](https://github.com/guillaumekln/faster-whisper)という軽量で高速な音声認識エンジンを使用しており、ユーザーがローカル環境で動作させることができます。
-動画のローカルファイル、または動画のURLを入力として受け取り、対応する字幕ファイル（SRT形式）を出力します。
+## 特徴
 
-動画編集や翻訳、字幕付きの動画視聴などに便利です
+- **MCPサーバ対応** - Claude Desktop等のMCPクライアントから直接利用可能
+- **高速処理** - Faster Whisper (CTranslate2) による最適化された推論
+- **多言語対応** - 59言語の自動検出・翻訳
+- **柔軟な入力** - ローカルファイル / URL（YouTube等）両対応
+- **GPU/CPU対応** - CUDA GPU または CPU で実行可能
 
-## インストール手順
+## MCPサーバとして使用
 
-### CUDA Toolkitのダウンロード
+### インストール
 
-Faster WhisperはCUDA Toolkit 12.X 系には対応していないため、11.X 系をインストールする必要があります。
+```bash
+# リポジトリをクローン
+git clone https://github.com/uzusio/faster-whisper-mcp.git
+cd faster-whisper-mcp
 
-1. [CUDA Toolkit 11.8 ダウンロードページ](https://developer.nvidia.com/cuda-11-8-0-download-archive)にアクセス
-2. 下記の設定でインストーラーをダウンロード
-    - Operating System: Windows
-    - Architecture: x86_64
-    - Version: 11
-    - Installer Type: exe(network)
+# uvをインストール（未インストールの場合）
+pip install uv
 
-### CUDA Toolkitのインストール
-
-ダウンロードしたインストーラーを実行し、CUDA Toolkit 11.8をインストールします。（時間がかかる可能性があります）
-
-### cuDNNのダウンロード
-
-**注意: NVIDIA DEVELOPERアカウントが必要です。**
-
-1. [cuDNNダウンロードページ](https://developer.nvidia.com/cudnn)にアクセス
-2. CUDA 11.X 系に対応したcuDNNをダウンロード
-
-### cuDNNの展開
-
-ダウンロードしたzipファイルを展開し、以下のディレクトリにファイルを格納
-- `bin`
-- `include`
-- `lib`
-
-例： `C:\Program Files\NVIDIA\CUDNN\v8.9`
-
-### 環境変数の追加
-
-各binディレクトリをシステム環境変数に追加してください
-
-## 使い方
-
-このスクリプトは動画から字幕を生成します。
-
-### 依存関係
-
-`Pipfile` に記載されています。
-
-### 使用例
-
-このスクリプトを実行するには、以下のようにコマンドライン引数を指定してください。
-
-#### 基本的な使用方法（デフォルトはGPUを使用）
-
-```sh
-python main.py [video_url | video_path]
+# 仮想環境作成＆依存関係インストール
+uv venv
+uv pip install -e .
 ```
 
-#### デバイスを指定して実行する（GPUまたはCPU）
+### Claude Desktopに登録
 
-```sh
-python main.py [video_url | video_path] --device [cuda | cpu]
+`%APPDATA%\Claude\claude_desktop_config.json`（Windows）または `~/Library/Application Support/Claude/claude_desktop_config.json`（Mac）に追加:
+
+```json
+{
+  "mcpServers": {
+    "faster-whisper": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/faster-whisper-mcp", "run", "python", "mcp_server.py"],
+      "env": {
+        "OPENAI_API_KEY": "sk-..."
+      }
+    }
+  }
+}
 ```
 
-#### 翻訳言語を指定して実行する
+> **Note**: `OPENAI_API_KEY` は翻訳機能使用時のみ必要です。
 
-```sh
-python main.py [video_url | video_path] --lang [language_code]
+### 提供ツール
+
+| ツール | 説明 |
+|--------|------|
+| `transcribe_from_file` | ローカル動画/音声ファイルから字幕生成 |
+| `transcribe_from_url` | URLから動画をダウンロードして字幕生成 |
+| `get_supported_languages` | サポート言語一覧を取得 |
+
+### ツールパラメータ
+
+#### transcribe_from_file
+
+| パラメータ | 型 | 必須 | デフォルト | 説明 |
+|-----------|-----|:----:|-----------|------|
+| file_path | string | Yes | - | 動画/音声ファイルの絶対パス |
+| device | string | No | "cuda" | 推論デバイス ("cuda" / "cpu") |
+| input_lang | string | No | null | 入力言語コード（省略時は自動検出） |
+| output_lang | string | No | null | 翻訳先言語コード（省略時は翻訳なし） |
+
+#### transcribe_from_url
+
+| パラメータ | 型 | 必須 | デフォルト | 説明 |
+|-----------|-----|:----:|-----------|------|
+| url | string | Yes | - | 動画URL（YouTube等） |
+| device | string | No | "cuda" | 推論デバイス ("cuda" / "cpu") |
+| input_lang | string | No | null | 入力言語コード（省略時は自動検出） |
+| output_lang | string | No | null | 翻訳先言語コード（省略時は翻訳なし） |
+
+#### 戻り値
+
+```json
+{
+  "success": true,
+  "srt_path": "/path/to/output_ja.srt",
+  "translated_srt_path": "/path/to/output_en.srt",
+  "detected_language": "ja",
+  "segment_count": 42,
+  "error": null
+}
 ```
 
-#### デバイスと翻訳言語の両方を指定して実行する
+### 使用例（Claude Desktop）
 
-```sh
-python main.py [video_url | video_path] --device [cuda | cpu] --lang [language_code]
+```
+この動画の字幕を生成して: C:\Videos\meeting.mp4
 ```
 
-### コマンドライン引数
+```
+https://www.youtube.com/watch?v=xxxxx この動画を日本語字幕付きで文字起こしして
+```
 
-- `input` : 動画のURLまたはローカルパスを指定します。
-- `--device` : 使用するデバイスを指定します。`cuda`（デフォルト）または`cpu`を選択できます。
-- `--lang` : 字幕を翻訳する言語のコードを指定します。デフォルトは`none`で翻訳なし。
+## CLIとして使用
 
-### 例
+```bash
+# 仮想環境を有効化
+# Windows (Git Bash):
+source .venv/Scripts/activate
+# Windows (PowerShell):
+.venv\Scripts\activate
+# Mac/Linux:
+source .venv/bin/activate
 
-#### GPUを使用してローカルファイルを処理する
-
-```sh
+# 基本的な使用方法
 python main.py video.mp4
+
+# デバイス指定
+python main.py video.mp4 --device cpu
+
+# 翻訳付き（日本語→英語）
+python main.py video.mp4 --input-lang ja --output-lang en
+
+# URLから処理
+python main.py https://www.youtube.com/watch?v=xxxxx
 ```
 
-#### CPUを使用してURLから動画を処理する
+### CLIオプション
 
-```sh
-python main.py https://example.com/video.mp4 --device cpu
-```
+| オプション | 説明 |
+|-----------|------|
+| `input` | 動画ファイルパス または URL |
+| `--device` | `cuda`（デフォルト）または `cpu` |
+| `--input-lang` | 入力言語コード（省略時は自動検出） |
+| `--output-lang` | 翻訳先言語コード（省略時は翻訳なし） |
 
-#### GPUを使用して動画を処理し、日本語に翻訳する
+## 環境要件
 
-```sh
-python main.py video.mp4 --lang ja
-```
+### 必須
 
-#### CPUを使用してURLから動画を処理し、スペイン語に翻訳する
+- Python 3.11+
+- [uv](https://github.com/astral-sh/uv) （パッケージ管理）
 
-```sh
-python main.py https://example.com/video.mp4 --device cpu --lang es
-```
+### GPU使用時（推奨）
 
-## 依存関係のインストール
+- NVIDIA GPU（CUDA対応）
+- CUDA Toolkit 12.x
+- cuDNN 9.x
+  - cuDNNの`bin`フォルダをPATHに追加
+  - 例: `C:\Program Files\NVIDIA\CUDNN\v9.16\bin\12.6`
 
-このプロジェクトはPipenvを用いて依存関係を管理しています。
+### 翻訳機能使用時
 
-### Pipenvのインストール
+- OpenAI APIキー（`.env`ファイルに`OPENAI_API_KEY`を設定）
 
-もしPipenvがインストールされていない場合は、次のコマンドでインストールできます。
+## 出力
 
-```bash
-pip install pipenv
-```
+- **形式**: SRT（SubRip Subtitle）
+- **出力先**:
+  - ローカルファイル: 入力ファイルと同じディレクトリ
+  - URL: `output/` ディレクトリ
+- **ファイル名**: `{元ファイル名}_{言語コード}.srt`
 
-### 依存関係のインストール
+## サポート言語
 
-プロジェクトのルートディレクトリで以下のコマンドを実行し、依存関係をインストールします。
+59言語に対応（`conf/language_code.json`で定義）:
 
-```bash
-pipenv install
-```
+日本語(ja), 英語(en), 中国語(zh), 韓国語(ko), スペイン語(es), フランス語(fr), ドイツ語(de), イタリア語(it), ポルトガル語(pt), ロシア語(ru), アラビア語(ar), ヒンディー語(hi), その他...
 
-### 仮想環境の有効化
+## ライセンス
 
-依存関係のインストール後、次のコマンドで仮想環境を有効化します。
+MIT License
 
-```bash
-pipenv shell
-```
+## 関連リンク
 
-これで、プロジェクトに必要なすべての依存関係がインストールされ、仮想環境が有効になります。
-
-## ToDo
-- [x] MacやCuda以外の環境向けにCPUに対応
-- [ ] Whisper APIを用いた実装
+- [Faster Whisper](https://github.com/guillaumekln/faster-whisper)
+- [Model Context Protocol](https://modelcontextprotocol.io/)
+- [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
