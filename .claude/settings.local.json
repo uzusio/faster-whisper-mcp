@@ -5,7 +5,16 @@
       "Bash(gh project item-create:*)",
       "Bash(gh project:*)",
       "WebFetch(domain:qiita.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(source .venv/Scripts/activate)",
+      "Bash(python -c:*)",
+      "Bash(python -m mcp:*)",
+      "Bash(mcp --help:*)",
+      "Bash(timeout 10 mcp run:*)",
+      "Bash(mcp install:*)",
+      "Bash(cat:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

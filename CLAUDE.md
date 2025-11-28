@@ -80,5 +80,54 @@ conf/language_code.json  # 言語コード→言語名マッピング（59言語
 
 ## 出力仕様
 
-- 出力先：`output/` ディレクトリ
+- 出力先：`output/` ディレクトリ（URL）/ 入力ファイルと同じディレクトリ（ローカル）
 - ファイル名形式：`{元ファイル名}_{言語コード}.srt`
+
+## MCPサーバ
+
+### 起動方法
+
+```bash
+# 直接起動
+python mcp_server.py
+
+# uvから起動
+uv run python mcp_server.py
+```
+
+### 提供ツール
+
+| ツール名 | 説明 |
+|---------|------|
+| `transcribe_from_file` | ローカル動画ファイルから字幕生成 |
+| `transcribe_from_url` | URLから動画をダウンロードして字幕生成 |
+| `get_supported_languages` | サポート言語一覧を取得 |
+
+### Claude Desktop設定
+
+`%APPDATA%\Claude\claude_desktop_config.json` に以下を追加:
+
+```json
+{
+  "mcpServers": {
+    "faster-whisper": {
+      "command": "uv",
+      "args": ["--directory", "c:\\work\\faster-whisper-mcp", "run", "python", "mcp_server.py"],
+      "env": {
+        "OPENAI_API_KEY": "sk-..."
+      }
+    }
+  }
+}
+```
+
+### MCPツールパラメータ
+
+#### transcribe_from_file / transcribe_from_url
+
+| パラメータ | 型 | 必須 | デフォルト | 説明 |
+|-----------|-----|------|-----------|------|
+| file_path / url | str | Yes | - | ファイルパス or URL |
+| device | str | No | "cuda" | "cuda" or "cpu" |
+| input_lang | str | No | None | 入力言語（自動検知） |
+| output_lang | str | No | None | 翻訳先言語 |
