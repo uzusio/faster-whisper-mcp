@@ -1,0 +1,23 @@
+[project]
+name = "faster-whisper-mcp"
+version = "0.1.0"
+description = "動画ファイルから字幕を高速生成するツール"
+requires-python = ">=3.11"
+dependencies = [
+    "faster-whisper",
+    "ctranslate2>=4.0,<4.5",
+    "yt-dlp",
+    "srt",
+    "pyinstaller",
+    "openai",
+    "python-dotenv",
+    "langchain-openai",
+    "langchain-core",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+dev = []
+
+[tool.setuptools]
+py-modules = ["main", "genSrt", "translator"]

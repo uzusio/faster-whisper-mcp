@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash C:/work/utils/windows-notify -t \"まことちゃん\" -m \"タスク完了！\" -i \"D:\\まことちゃん.png\""
+          }
+        ]
+      }
+    ]
+  }
+}

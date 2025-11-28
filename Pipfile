@@ -13,6 +13,7 @@ openai = "*"
 python-dotenv = "*"
 langchain-openai = "*"
 langchain-core = "*"
+tqdm = "*"
 
 [dev-packages]
 
