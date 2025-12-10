@@ -18,7 +18,7 @@ from mcp.server.fastmcp import FastMCP, Context
 from pydantic import BaseModel
 
 from whisper_manager import WhisperManager
-from genSrt import download_video
+from genSrt import download_video, get_unique_filepath
 from translator import Translator
 
 # ロギング設定
@@ -182,6 +182,7 @@ async def transcribe_with_progress(
         # SRTファイル生成
         base_filename = os.path.splitext(os.path.basename(file_path))[0]
         srt_file_path = os.path.join(output_path, f"{base_filename}_{detected_lang}.srt")
+        srt_file_path = get_unique_filepath(srt_file_path)
 
         subs = []
         for index, segment in enumerate(segments_list):
@@ -231,6 +232,7 @@ async def transcribe_with_progress(
                         )
 
                 translated_srt_path = os.path.join(output_path, f"{base_filename}_{output_lang}.srt")
+                translated_srt_path = get_unique_filepath(translated_srt_path)
                 with open(translated_srt_path, 'w', encoding='utf-8') as f:
                     f.write(srt.compose(translated_subs))
 

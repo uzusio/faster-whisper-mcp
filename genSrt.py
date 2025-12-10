@@ -124,6 +124,7 @@ def transcribe_video(file_path: str, output_path: str = 'output', translator = N
     base_filename = os.path.splitext(os.path.basename(file_path))[0]
     srt_file_path = os.path.join(
         output_path, f"{base_filename}_{detected_lang}.srt")
+    srt_file_path = get_unique_filepath(srt_file_path)
 
     # segmentsイテレータを複製
     segments1, segments2 = itertools.tee(segments, 2)
@@ -139,6 +140,7 @@ def transcribe_video(file_path: str, output_path: str = 'output', translator = N
 
         translated_srt_file_path = os.path.join(
             output_path, f"{base_filename}_{output_lang}.srt")
+        translated_srt_file_path = get_unique_filepath(translated_srt_file_path)
         # 翻訳されたセグメントをSRT形式の字幕データに変換して保存
         with open(translated_srt_file_path, 'w', encoding='utf-8') as f:
             f.write(srt.compose(result2subs(translated_segments)))
@@ -199,3 +201,28 @@ def rename_files(old_path: str, new_name: str, extension: str, output_dir: str =
 
 def clean_filename(filename: str) -> str:
     return re.sub(r'[/*?:"<>|]', '', filename)
+
+
+def get_unique_filepath(filepath: str) -> str:
+    """
+    ファイルパスが既に存在する場合、連番を付与してユニークなパスを返します。
+
+    Args:
+        filepath (str): 元のファイルパス。
+
+    Returns:
+        str: ユニークなファイルパス。
+    """
+    if not os.path.exists(filepath):
+        return filepath
+
+    directory = os.path.dirname(filepath)
+    filename = os.path.basename(filepath)
+    name, ext = os.path.splitext(filename)
+
+    counter = 1
+    while True:
+        new_filepath = os.path.join(directory, f"{name}_{counter}{ext}")
+        if not os.path.exists(new_filepath):
+            return new_filepath
+        counter += 1
