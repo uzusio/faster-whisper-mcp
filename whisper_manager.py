@@ -18,43 +18,45 @@ class WhisperManager:
 
     _model: Optional[WhisperModel] = None
     _device: Optional[str] = None
-    _model_size: str = "large-v3"
+    _model_size: Optional[str] = None
 
     @classmethod
-    def get_model(cls, device: str = "cuda") -> WhisperModel:
+    def get_model(cls, device: str = "cuda", model_size: str = "large-v3") -> WhisperModel:
         """モデルを取得（必要に応じてロード）
 
         Args:
             device: 使用デバイス ("cuda" or "cpu")
+            model_size: Whisperモデルサイズ
 
         Returns:
             WhisperModel インスタンス
         """
-        if cls._model is not None and cls._device == device:
-            logger.debug(f"Using cached model (device={device})")
+        if cls._model is not None and cls._device == device and cls._model_size == model_size:
+            logger.debug(f"Using cached model (device={device}, model_size={model_size})")
             return cls._model
 
-        # デバイスが変わった場合は再ロード
+        # デバイスまたはモデルサイズが変わった場合は再ロード
         if cls._model is not None:
-            logger.info(f"Device changed from {cls._device} to {device}, reloading model...")
+            logger.info(f"Configuration changed (device: {cls._device}->{device}, model: {cls._model_size}->{model_size}), reloading model...")
             cls.unload()
 
-        cls._load(device)
+        cls._load(device, model_size)
         return cls._model
 
     @classmethod
-    def _load(cls, device: str) -> None:
+    def _load(cls, device: str, model_size: str) -> None:
         """モデルをロード"""
-        logger.info(f"Loading Whisper model ({cls._model_size}) on {device}...")
+        logger.info(f"Loading Whisper model ({model_size}) on {device}...")
 
         compute_type = "float16" if device == "cuda" else "int8"
 
         cls._model = WhisperModel(
-            cls._model_size,
+            model_size,
             device=device,
             compute_type=compute_type
         )
         cls._device = device
+        cls._model_size = model_size
 
         logger.info(f"Model loaded successfully")
 
@@ -66,6 +68,7 @@ class WhisperManager:
             del cls._model
             cls._model = None
             cls._device = None
+            cls._model_size = None
 
             # ガベージコレクションを強制実行
             gc.collect()

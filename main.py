@@ -15,6 +15,7 @@ def main():
     parser = argparse.ArgumentParser(description="Transcribe and translate videos.")
     parser.add_argument('input', type=str, help='URL or local path of the video')
     parser.add_argument('--device', type=str, choices=['cuda', 'cpu'], default='cuda', help='Device to use for inference (default: cuda)')
+    parser.add_argument('--model', type=str, default='large-v3', help='Whisper model size (default: large-v3)')
     parser.add_argument('--input-lang', type=str, default=None, help='Input language code (default: auto-detect)')
     parser.add_argument('--output-lang', type=str, default=None, help='Output language code for translation (default: no translation)')
 
@@ -22,6 +23,7 @@ def main():
 
     input_arg = args.input
     device = args.device
+    model_size = args.model
     input_lang = args.input_lang
     output_lang = args.output_lang
 
@@ -43,7 +45,7 @@ def main():
         video_extension = os.path.splitext(downloaded_file_path)[1][1:]
 
     print(f"output_path: {output_path}")
-    transcribe_video(downloaded_file_path, output_path, translator, input_lang, output_lang, device)
+    transcribe_video(downloaded_file_path, output_path, translator, input_lang, output_lang, device, model_size)
 
 if __name__ == "__main__":
     main()

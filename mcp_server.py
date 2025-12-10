@@ -107,6 +107,7 @@ async def transcribe_with_progress(
     ctx: Context,
     progress_start: int = 0,
     progress_end: int = 100,
+    model_size: str = "large-v3",
 ) -> TranscribeResult:
     """プログレス報告付きで文字起こしを実行
 
@@ -119,6 +120,7 @@ async def transcribe_with_progress(
         ctx: MCPコンテキスト
         progress_start: プログレス開始値
         progress_end: プログレス終了値
+        model_size: Whisperモデルサイズ
     """
     app_ctx = get_app_context(ctx)
 
@@ -130,7 +132,7 @@ async def transcribe_with_progress(
     try:
         # モデルロード
         await ctx.report_progress(progress_start, progress_end, "モデルをロード中...")
-        model = WhisperManager.get_model(device)
+        model = WhisperManager.get_model(device, model_size)
         await ctx.report_progress(model_load_end, progress_end, "モデルロード完了")
 
         # 文字起こし実行
@@ -280,6 +282,7 @@ async def get_supported_languages(ctx: Context) -> SupportedLanguagesResult:
 async def transcribe_from_file(
     file_path: str,
     device: str = "cuda",
+    model_size: str = "large-v3",
     input_lang: Optional[str] = None,
     output_lang: Optional[str] = None,
     ctx: Context = None,
@@ -289,6 +292,7 @@ async def transcribe_from_file(
     Args:
         file_path: 動画/音声ファイルの絶対パス
         device: 推論に使用するデバイス ("cuda" または "cpu")
+        model_size: Whisperモデルサイズ (デフォルト: "large-v3")
         input_lang: 入力言語コード（省略時は自動検知）
         output_lang: 翻訳先言語コード（省略時は翻訳なし）
 
@@ -317,6 +321,7 @@ async def transcribe_from_file(
         ctx=ctx,
         progress_start=0,
         progress_end=100,
+        model_size=model_size,
     )
 
 
@@ -324,6 +329,7 @@ async def transcribe_from_file(
 async def transcribe_from_url(
     url: str,
     device: str = "cuda",
+    model_size: str = "large-v3",
     input_lang: Optional[str] = None,
     output_lang: Optional[str] = None,
     ctx: Context = None,
@@ -333,6 +339,7 @@ async def transcribe_from_url(
     Args:
         url: 動画のURL（YouTube等）
         device: 推論に使用するデバイス ("cuda" または "cpu")
+        model_size: Whisperモデルサイズ (デフォルト: "large-v3")
         input_lang: 入力言語コード（省略時は自動検知）
         output_lang: 翻訳先言語コード（省略時は翻訳なし）
 
@@ -367,6 +374,7 @@ async def transcribe_from_url(
             ctx=ctx,
             progress_start=10,
             progress_end=100,
+            model_size=model_size,
         )
 
     except Exception as e:

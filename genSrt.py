@@ -71,7 +71,7 @@ def result2subs(segments, desc="字幕生成"):
     return subs
 
 
-def transcribe_video(file_path: str, output_path: str = 'output', translator = None, input_lang: str = None, output_lang: str = None, device: str = 'cuda'):
+def transcribe_video(file_path: str, output_path: str = 'output', translator = None, input_lang: str = None, output_lang: str = None, device: str = 'cuda', model_size: str = 'large-v3'):
     """
     指定された動画ファイルをトランスクリプトし、結果をSRTファイルとして保存します。
 
@@ -82,10 +82,10 @@ def transcribe_video(file_path: str, output_path: str = 'output', translator = N
     input_lang (str): 入力言語コード（Noneの場合は自動検知）。
     output_lang (str): 出力言語コード（Noneの場合は翻訳なし）。
     device (str): 使用するデバイス（'cuda' または 'cpu'）
+    model_size (str): Whisperモデルサイズ（デフォルト: 'large-v3'）
 
     """
     print(file_path)
-    model_size = "large-v3"
 
     # Run on GPU with FP16
     if device == 'cuda':
