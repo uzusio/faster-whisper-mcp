@@ -18,6 +18,13 @@ def main():
     parser.add_argument('--model', type=str, default='large-v3', help='Whisper model size (default: large-v3)')
     parser.add_argument('--input-lang', type=str, default=None, help='Input language code (default: auto-detect)')
     parser.add_argument('--output-lang', type=str, default=None, help='Output language code for translation (default: no translation)')
+    # 精度向上オプション
+    parser.add_argument('--initial-prompt', type=str, default=None, help='Initial prompt with hints for specialized terms')
+    parser.add_argument('--no-condition-on-previous-text', action='store_true', help='Disable conditioning on previous text')
+    parser.add_argument('--temperature', type=float, default=0.0, help='Temperature for sampling (default: 0.0)')
+    parser.add_argument('--no-speech-threshold', type=float, default=0.6, help='No speech threshold (default: 0.6)')
+    parser.add_argument('--compression-ratio-threshold', type=float, default=2.4, help='Compression ratio threshold (default: 2.4)')
+    parser.add_argument('--vad-filter', action='store_true', help='Enable VAD filter')
 
     args = parser.parse_args()
 
@@ -26,6 +33,12 @@ def main():
     model_size = args.model
     input_lang = args.input_lang
     output_lang = args.output_lang
+    initial_prompt = args.initial_prompt
+    condition_on_previous_text = not args.no_condition_on_previous_text
+    temperature = args.temperature
+    no_speech_threshold = args.no_speech_threshold
+    compression_ratio_threshold = args.compression_ratio_threshold
+    vad_filter = args.vad_filter
 
     translator = None
     if output_lang is not None:
@@ -45,7 +58,21 @@ def main():
         video_extension = os.path.splitext(downloaded_file_path)[1][1:]
 
     print(f"output_path: {output_path}")
-    transcribe_video(downloaded_file_path, output_path, translator, input_lang, output_lang, device, model_size)
+    transcribe_video(
+        downloaded_file_path,
+        output_path,
+        translator,
+        input_lang,
+        output_lang,
+        device,
+        model_size,
+        initial_prompt,
+        condition_on_previous_text,
+        temperature,
+        no_speech_threshold,
+        compression_ratio_threshold,
+        vad_filter,
+    )
 
 if __name__ == "__main__":
     main()

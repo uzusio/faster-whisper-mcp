@@ -108,6 +108,12 @@ async def transcribe_with_progress(
     progress_start: int = 0,
     progress_end: int = 100,
     model_size: str = "large-v3",
+    initial_prompt: Optional[str] = None,
+    condition_on_previous_text: bool = True,
+    temperature: float = 0.0,
+    no_speech_threshold: float = 0.6,
+    compression_ratio_threshold: float = 2.4,
+    vad_filter: bool = False,
 ) -> TranscribeResult:
     """プログレス報告付きで文字起こしを実行
 
@@ -121,6 +127,12 @@ async def transcribe_with_progress(
         progress_start: プログレス開始値
         progress_end: プログレス終了値
         model_size: Whisperモデルサイズ
+        initial_prompt: 専門用語や固有名詞のヒントを提供するプロンプト
+        condition_on_previous_text: 前のセグメントを参照して文脈維持
+        temperature: 温度パラメータ（0.0で最も決定的）
+        no_speech_threshold: 無音判定の閾値
+        compression_ratio_threshold: 繰り返し検出の閾値
+        vad_filter: 音声区間検出フィルタを使用
     """
     app_ctx = get_app_context(ctx)
 
@@ -138,22 +150,28 @@ async def transcribe_with_progress(
         # 文字起こし実行
         await ctx.report_progress(model_load_end, progress_end, "文字起こし中...")
 
+        # transcribeパラメータを構築
+        transcribe_params = {
+            'beam_size': 5,
+            'word_timestamps': True,
+            'condition_on_previous_text': condition_on_previous_text,
+            'temperature': temperature,
+            'no_speech_threshold': no_speech_threshold,
+            'compression_ratio_threshold': compression_ratio_threshold,
+            'vad_filter': vad_filter,
+        }
+
+        if initial_prompt:
+            transcribe_params['initial_prompt'] = initial_prompt
+
         if input_lang:
-            segments, info = model.transcribe(
-                file_path,
-                beam_size=5,
-                language=input_lang,
-                vad_filter=False,
-                word_timestamps=True,
-            )
+            transcribe_params['language'] = input_lang
+
+        segments, info = model.transcribe(file_path, **transcribe_params)
+
+        if input_lang:
             detected_lang = input_lang
         else:
-            segments, info = model.transcribe(
-                file_path,
-                beam_size=5,
-                vad_filter=False,
-                word_timestamps=True,
-            )
             detected_lang = info.language
 
         logger.info(f"Detected language: {detected_lang}")
@@ -285,6 +303,12 @@ async def transcribe_from_file(
     model_size: str = "large-v3",
     input_lang: Optional[str] = None,
     output_lang: Optional[str] = None,
+    initial_prompt: Optional[str] = None,
+    condition_on_previous_text: bool = True,
+    temperature: float = 0.0,
+    no_speech_threshold: float = 0.6,
+    compression_ratio_threshold: float = 2.4,
+    vad_filter: bool = False,
     ctx: Context = None,
 ) -> TranscribeResult:
     """ローカルの動画/音声ファイルから字幕を生成します。
@@ -295,6 +319,12 @@ async def transcribe_from_file(
         model_size: Whisperモデルサイズ (デフォルト: "large-v3")
         input_lang: 入力言語コード（省略時は自動検知）
         output_lang: 翻訳先言語コード（省略時は翻訳なし）
+        initial_prompt: 専門用語や固有名詞のヒントを提供するプロンプト
+        condition_on_previous_text: 前のセグメントを参照して文脈維持 (デフォルト: True)
+        temperature: 温度パラメータ（0.0で最も決定的、デフォルト: 0.0）
+        no_speech_threshold: 無音判定の閾値 (デフォルト: 0.6)
+        compression_ratio_threshold: 繰り返し検出の閾値 (デフォルト: 2.4)
+        vad_filter: 音声区間検出フィルタを使用 (デフォルト: False)
 
     Returns:
         生成されたSRTファイルのパスと検出された言語情報
@@ -322,6 +352,12 @@ async def transcribe_from_file(
         progress_start=0,
         progress_end=100,
         model_size=model_size,
+        initial_prompt=initial_prompt,
+        condition_on_previous_text=condition_on_previous_text,
+        temperature=temperature,
+        no_speech_threshold=no_speech_threshold,
+        compression_ratio_threshold=compression_ratio_threshold,
+        vad_filter=vad_filter,
     )
 
 
@@ -332,6 +368,12 @@ async def transcribe_from_url(
     model_size: str = "large-v3",
     input_lang: Optional[str] = None,
     output_lang: Optional[str] = None,
+    initial_prompt: Optional[str] = None,
+    condition_on_previous_text: bool = True,
+    temperature: float = 0.0,
+    no_speech_threshold: float = 0.6,
+    compression_ratio_threshold: float = 2.4,
+    vad_filter: bool = False,
     ctx: Context = None,
 ) -> TranscribeResult:
     """URLから動画をダウンロードして字幕を生成します。
@@ -342,6 +384,12 @@ async def transcribe_from_url(
         model_size: Whisperモデルサイズ (デフォルト: "large-v3")
         input_lang: 入力言語コード（省略時は自動検知）
         output_lang: 翻訳先言語コード（省略時は翻訳なし）
+        initial_prompt: 専門用語や固有名詞のヒントを提供するプロンプト
+        condition_on_previous_text: 前のセグメントを参照して文脈維持 (デフォルト: True)
+        temperature: 温度パラメータ（0.0で最も決定的、デフォルト: 0.0）
+        no_speech_threshold: 無音判定の閾値 (デフォルト: 0.6)
+        compression_ratio_threshold: 繰り返し検出の閾値 (デフォルト: 2.4)
+        vad_filter: 音声区間検出フィルタを使用 (デフォルト: False)
 
     Returns:
         生成されたSRTファイルのパスと検出された言語情報
@@ -375,6 +423,12 @@ async def transcribe_from_url(
             progress_start=10,
             progress_end=100,
             model_size=model_size,
+            initial_prompt=initial_prompt,
+            condition_on_previous_text=condition_on_previous_text,
+            temperature=temperature,
+            no_speech_threshold=no_speech_threshold,
+            compression_ratio_threshold=compression_ratio_threshold,
+            vad_filter=vad_filter,
         )
 
     except Exception as e:

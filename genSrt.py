@@ -71,7 +71,21 @@ def result2subs(segments, desc="字幕生成"):
     return subs
 
 
-def transcribe_video(file_path: str, output_path: str = 'output', translator = None, input_lang: str = None, output_lang: str = None, device: str = 'cuda', model_size: str = 'large-v3'):
+def transcribe_video(
+    file_path: str,
+    output_path: str = 'output',
+    translator = None,
+    input_lang: str = None,
+    output_lang: str = None,
+    device: str = 'cuda',
+    model_size: str = 'large-v3',
+    initial_prompt: str = None,
+    condition_on_previous_text: bool = True,
+    temperature: float = 0.0,
+    no_speech_threshold: float = 0.6,
+    compression_ratio_threshold: float = 2.4,
+    vad_filter: bool = False,
+):
     """
     指定された動画ファイルをトランスクリプトし、結果をSRTファイルとして保存します。
 
@@ -83,6 +97,12 @@ def transcribe_video(file_path: str, output_path: str = 'output', translator = N
     output_lang (str): 出力言語コード（Noneの場合は翻訳なし）。
     device (str): 使用するデバイス（'cuda' または 'cpu'）
     model_size (str): Whisperモデルサイズ（デフォルト: 'large-v3'）
+    initial_prompt (str): 専門用語や固有名詞のヒントを提供するプロンプト
+    condition_on_previous_text (bool): 前のセグメントを参照して文脈維持（デフォルト: True）
+    temperature (float): 温度パラメータ（0.0で最も決定的、デフォルト: 0.0）
+    no_speech_threshold (float): 無音判定の閾値（デフォルト: 0.6）
+    compression_ratio_threshold (float): 繰り返し検出の閾値（デフォルト: 2.4）
+    vad_filter (bool): 音声区間検出フィルタを使用（デフォルト: False）
 
     """
     print(file_path)
@@ -95,24 +115,30 @@ def transcribe_video(file_path: str, output_path: str = 'output', translator = N
 
     model = WhisperModel(model_size, device=device, compute_type=compute_type)
 
-    # 入力言語が指定されていれば使用、なければ自動検知
+    # transcribeパラメータを構築
+    transcribe_params = {
+        'beam_size': 5,
+        'word_timestamps': True,
+        'condition_on_previous_text': condition_on_previous_text,
+        'temperature': temperature,
+        'no_speech_threshold': no_speech_threshold,
+        'compression_ratio_threshold': compression_ratio_threshold,
+        'vad_filter': vad_filter,
+    }
+
+    if initial_prompt:
+        transcribe_params['initial_prompt'] = initial_prompt
+
     if input_lang:
-        segments, info = model.transcribe(
-            file_path,
-            beam_size=5,
-            language=input_lang,
-            vad_filter=False,  # VAD無効化
-            word_timestamps=True,  # 単語レベルのタイムスタンプ
-        )
+        transcribe_params['language'] = input_lang
+
+    # 文字起こし実行
+    segments, info = model.transcribe(file_path, **transcribe_params)
+
+    if input_lang:
         detected_lang = input_lang
         print(f"Using specified input language: {input_lang}")
     else:
-        segments, info = model.transcribe(
-            file_path,
-            beam_size=5,
-            vad_filter=False,  # VAD無効化
-            word_timestamps=True,  # 単語レベルのタイムスタンプ
-        )
         detected_lang = info.language
         print("Detected language '%s' with probability %f" %
               (info.language, info.language_probability))

@@ -131,3 +131,9 @@ uv run python mcp_server.py
 | device | str | No | "cuda" | "cuda" or "cpu" |
 | input_lang | str | No | None | 入力言語（自動検知） |
 | output_lang | str | No | None | 翻訳先言語 |
+
+## テスト時の注意事項
+
+- テストは基本的にデフォルト設定（`--device cuda --model large-v3`）で実施する
+- CPU環境でのテストが必要な場合のみ `--device cpu` を使用
+- 品質確認のテストでは必ず large-v3 モデルを使用（small等は速度テスト用途のみ）
