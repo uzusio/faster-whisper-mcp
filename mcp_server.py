@@ -304,11 +304,11 @@ async def transcribe_from_file(
     input_lang: Optional[str] = None,
     output_lang: Optional[str] = None,
     initial_prompt: Optional[str] = None,
-    condition_on_previous_text: bool = True,
+    condition_on_previous_text: bool = False,
     temperature: float = 0.0,
     no_speech_threshold: float = 0.6,
     compression_ratio_threshold: float = 2.4,
-    vad_filter: bool = False,
+    vad_filter: bool = True,
     ctx: Context = None,
 ) -> TranscribeResult:
     """ローカルの動画/音声ファイルから字幕を生成します。
@@ -320,11 +320,11 @@ async def transcribe_from_file(
         input_lang: 入力言語コード（省略時は自動検知）
         output_lang: 翻訳先言語コード（省略時は翻訳なし）
         initial_prompt: 専門用語や固有名詞のヒントを提供するプロンプト
-        condition_on_previous_text: 前のセグメントを参照して文脈維持 (デフォルト: True)
+        condition_on_previous_text: 前のセグメントを参照して文脈維持 (デフォルト: False、ハルシネーション防止)
         temperature: 温度パラメータ（0.0で最も決定的、デフォルト: 0.0）
         no_speech_threshold: 無音判定の閾値 (デフォルト: 0.6)
         compression_ratio_threshold: 繰り返し検出の閾値 (デフォルト: 2.4)
-        vad_filter: 音声区間検出フィルタを使用 (デフォルト: False)
+        vad_filter: 音声区間検出フィルタを使用 (デフォルト: True、ハルシネーション防止)
 
     Returns:
         生成されたSRTファイルのパスと検出された言語情報
@@ -369,11 +369,11 @@ async def transcribe_from_url(
     input_lang: Optional[str] = None,
     output_lang: Optional[str] = None,
     initial_prompt: Optional[str] = None,
-    condition_on_previous_text: bool = True,
+    condition_on_previous_text: bool = False,
     temperature: float = 0.0,
     no_speech_threshold: float = 0.6,
     compression_ratio_threshold: float = 2.4,
-    vad_filter: bool = False,
+    vad_filter: bool = True,
     ctx: Context = None,
 ) -> TranscribeResult:
     """URLから動画をダウンロードして字幕を生成します。
@@ -385,11 +385,11 @@ async def transcribe_from_url(
         input_lang: 入力言語コード（省略時は自動検知）
         output_lang: 翻訳先言語コード（省略時は翻訳なし）
         initial_prompt: 専門用語や固有名詞のヒントを提供するプロンプト
-        condition_on_previous_text: 前のセグメントを参照して文脈維持 (デフォルト: True)
+        condition_on_previous_text: 前のセグメントを参照して文脈維持 (デフォルト: False、ハルシネーション防止)
         temperature: 温度パラメータ（0.0で最も決定的、デフォルト: 0.0）
         no_speech_threshold: 無音判定の閾値 (デフォルト: 0.6)
         compression_ratio_threshold: 繰り返し検出の閾値 (デフォルト: 2.4)
-        vad_filter: 音声区間検出フィルタを使用 (デフォルト: False)
+        vad_filter: 音声区間検出フィルタを使用 (デフォルト: True、ハルシネーション防止)
 
     Returns:
         生成されたSRTファイルのパスと検出された言語情報

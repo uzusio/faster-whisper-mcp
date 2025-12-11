@@ -20,11 +20,11 @@ def main():
     parser.add_argument('--output-lang', type=str, default=None, help='Output language code for translation (default: no translation)')
     # 精度向上オプション
     parser.add_argument('--initial-prompt', type=str, default=None, help='Initial prompt with hints for specialized terms')
-    parser.add_argument('--no-condition-on-previous-text', action='store_true', help='Disable conditioning on previous text')
+    parser.add_argument('--condition-on-previous-text', action='store_true', help='Enable conditioning on previous text (default: disabled to prevent hallucination)')
     parser.add_argument('--temperature', type=float, default=0.0, help='Temperature for sampling (default: 0.0)')
     parser.add_argument('--no-speech-threshold', type=float, default=0.6, help='No speech threshold (default: 0.6)')
     parser.add_argument('--compression-ratio-threshold', type=float, default=2.4, help='Compression ratio threshold (default: 2.4)')
-    parser.add_argument('--vad-filter', action='store_true', help='Enable VAD filter')
+    parser.add_argument('--no-vad-filter', action='store_true', help='Disable VAD filter (default: enabled)')
 
     args = parser.parse_args()
 
@@ -34,11 +34,11 @@ def main():
     input_lang = args.input_lang
     output_lang = args.output_lang
     initial_prompt = args.initial_prompt
-    condition_on_previous_text = not args.no_condition_on_previous_text
+    condition_on_previous_text = args.condition_on_previous_text
     temperature = args.temperature
     no_speech_threshold = args.no_speech_threshold
     compression_ratio_threshold = args.compression_ratio_threshold
-    vad_filter = args.vad_filter
+    vad_filter = not args.no_vad_filter
 
     translator = None
     if output_lang is not None:

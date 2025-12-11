@@ -22,25 +22,17 @@ GitHub Projectsで管理: https://github.com/users/uzusio/projects/3
 # uvインストール（初回のみ）
 pip install uv
 
-# 仮想環境作成
+# 仮想環境作成・依存関係インストール
 uv venv
-
-# 仮想環境有効化
-# Git Bash:
-source .venv/Scripts/activate
-# cmd/PowerShell:
-.venv\Scripts\activate
-
-# 依存関係インストール
 uv pip install -e .
 
-# スクリプト実行
-python main.py [video_url | video_path]
-python main.py [video_url | video_path] --device [cuda | cpu]
-python main.py [video_url | video_path] --lang [language_code]
+# スクリプト実行（uv runで仮想環境を自動使用）
+uv run python main.py [video_url | video_path]
+uv run python main.py [video_url | video_path] --device [cuda | cpu]
+uv run python main.py [video_url | video_path] --input-lang [language_code]
 
 # 実行ファイル化（PyInstaller）
-python build_script.py
+uv run python build_script.py
 ```
 
 ## アーキテクチャ
@@ -88,10 +80,6 @@ conf/language_code.json  # 言語コード→言語名マッピング（59言語
 ### 起動方法
 
 ```bash
-# 直接起動
-python mcp_server.py
-
-# uvから起動
 uv run python mcp_server.py
 ```
 
