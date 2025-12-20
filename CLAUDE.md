@@ -19,109 +19,45 @@ GitHub Projectsで管理: https://github.com/users/uzusio/projects/3
 ## 開発コマンド
 
 ```bash
-# uvインストール（初回のみ）
-pip install uv
+# セットアップ
+uv venv && uv pip install -e .
 
-# 仮想環境作成・依存関係インストール
-uv venv
-uv pip install -e .
-
-# スクリプト実行（uv runで仮想環境を自動使用）
+# CLI実行
 uv run python main.py [video_url | video_path]
-uv run python main.py [video_url | video_path] --device [cuda | cpu]
-uv run python main.py [video_url | video_path] --input-lang [language_code]
 
-# 実行ファイル化（PyInstaller）
+# MCPサーバ起動
+uv run python mcp_server.py
+
+# ビルド
 uv run python build_script.py
 ```
 
 ## アーキテクチャ
 
 ```
-main.py          # エントリーポイント（CLI引数パース、処理振り分け）
-    ↓
-genSrt.py        # メイン処理（動画DL、Whisper音声認識、SRT生成）
-    ↓
-translator.py    # 翻訳処理（LangChain + OpenAI GPT-3.5）
-    ↓
-conf/language_code.json  # 言語コード→言語名マッピング（59言語）
+main.py          # CLI エントリーポイント
+mcp_server.py    # MCPサーバ
+genSrt.py        # 音声認識・SRT生成
+translator.py    # 翻訳処理（LangChain + OpenAI）
+whisper_manager.py # モデル管理
 ```
 
-### 処理フロー
+## MCPサーバ
 
-1. コマンドライン引数パース（main.py）
-2. URLの場合：yt-dlpでダウンロード（genSrt.download_video）
-3. Faster Whisper（large-v3モデル）で音声認識
-   - CUDA時：float16、CPU時：int8
-4. 原言語SRT出力
-5. --lang指定時：OpenAI APIで翻訳SRT出力
+提供ツール: `transcribe_from_file`, `transcribe_from_url`, `get_supported_languages`
 
-### 主要関数
+パラメータ詳細は `skills/whisper/` を参照。
 
-- `genSrt.download_video(url, output_dir)` - yt-dlpで動画ダウンロード
-- `genSrt.transcribe_video(file_path, output_path, translator, translate_to_lang, device)` - 音声認識と字幕生成
-- `genSrt.translate_segments(segments, translator)` - セグメント翻訳
-- `Translator.translation(text)` - LangChainで翻訳実行
+## Claude Skill
+
+`skills/whisper/` に文字起こしスキルを定義。MCPツール実行時の安定した動作を提供。
 
 ## 環境要件
 
 - Python 3.11
 - CUDA Toolkit 12.x + cuDNN 9（GPU使用時）
-  - cuDNNのbinフォルダをPATHに追加（例：`C:\Program Files\NVIDIA\CUDNN\v9.16\bin\13.0`）
-- OpenAI APIキー（翻訳機能使用時）- .envファイルに設定
+- OpenAI APIキー（翻訳機能使用時）
 
-## 出力仕様
+## テスト時の注意
 
-- 出力先：`output/` ディレクトリ（URL）/ 入力ファイルと同じディレクトリ（ローカル）
-- ファイル名形式：`{元ファイル名}_{言語コード}.srt`
-
-## MCPサーバ
-
-### 起動方法
-
-```bash
-uv run python mcp_server.py
-```
-
-### 提供ツール
-
-| ツール名 | 説明 |
-|---------|------|
-| `transcribe_from_file` | ローカル動画ファイルから字幕生成 |
-| `transcribe_from_url` | URLから動画をダウンロードして字幕生成 |
-| `get_supported_languages` | サポート言語一覧を取得 |
-
-### Claude Desktop設定
-
-`%APPDATA%\Claude\claude_desktop_config.json` に以下を追加:
-
-```json
-{
-  "mcpServers": {
-    "faster-whisper": {
-      "command": "uv",
-      "args": ["--directory", "c:\\work\\faster-whisper-mcp", "run", "python", "mcp_server.py"],
-      "env": {
-        "OPENAI_API_KEY": "sk-..."
-      }
-    }
-  }
-}
-```
-
-### MCPツールパラメータ
-
-#### transcribe_from_file / transcribe_from_url
-
-| パラメータ | 型 | 必須 | デフォルト | 説明 |
-|-----------|-----|------|-----------|------|
-| file_path / url | str | Yes | - | ファイルパス or URL |
-| device | str | No | "cuda" | "cuda" or "cpu" |
-| input_lang | str | No | None | 入力言語（自動検知） |
-| output_lang | str | No | None | 翻訳先言語 |
-
-## テスト時の注意事項
-
-- テストは基本的にデフォルト設定（`--device cuda --model large-v3`）で実施する
-- CPU環境でのテストが必要な場合のみ `--device cpu` を使用
-- 品質確認のテストでは必ず large-v3 モデルを使用（small等は速度テスト用途のみ）
+デフォルト設定（`--device cuda --model large-v3`）で実施。
