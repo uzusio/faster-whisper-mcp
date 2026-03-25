@@ -14,6 +14,8 @@
 | no_speech_threshold | float | 0.6 | 無音判定閾値 |
 | compression_ratio_threshold | float | 2.4 | 繰り返し検出閾値 |
 | vad_filter | bool | True | 音声区間検出フィルタ |
+| multilingual | bool | False | マルチリンガルモード（VAD+フレーズ単位言語検出） |
+| languages | str | None | 言語ホワイトリスト（カンマ区切り、例: `"ja,en,ko"`）。multilingual時のみ有効 |
 
 ## 戻り値
 

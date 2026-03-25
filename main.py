@@ -41,6 +41,8 @@ def main():
     parser.add_argument('--no-speech-threshold', type=float, default=0.6, help='No speech threshold (default: 0.6)')
     parser.add_argument('--compression-ratio-threshold', type=float, default=2.4, help='Compression ratio threshold (default: 2.4)')
     parser.add_argument('--no-vad-filter', action='store_true', help='Disable VAD filter (default: enabled)')
+    parser.add_argument('--multilingual', action='store_true', help='Enable multilingual mode: per-phrase language detection using VAD segmentation')
+    parser.add_argument('--languages', type=str, default=None, help='Language whitelist for multilingual mode (comma-separated, e.g. "ja,en,ko,zh")')
 
     args = parser.parse_args()
 
@@ -55,6 +57,8 @@ def main():
     no_speech_threshold = args.no_speech_threshold
     compression_ratio_threshold = args.compression_ratio_threshold
     vad_filter = not args.no_vad_filter
+    multilingual = args.multilingual
+    languages = args.languages.split(',') if args.languages else None
 
     translator = None
     if output_lang is not None:
@@ -88,6 +92,8 @@ def main():
         no_speech_threshold,
         compression_ratio_threshold,
         vad_filter,
+        multilingual,
+        languages,
     )
 
 if __name__ == "__main__":

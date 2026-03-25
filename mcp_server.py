@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from whisper_manager import WhisperManager
 from genSrt import download_video, get_unique_filepath
 from translator import Translator
+from multilingual_transcriber import transcribe_multilingual, results_to_srt
 
 # ロギング設定
 logging.basicConfig(
@@ -129,6 +130,8 @@ async def transcribe_with_progress(
     no_speech_threshold: float = 0.6,
     compression_ratio_threshold: float = 2.4,
     vad_filter: bool = False,
+    multilingual: bool = False,
+    languages: Optional[list[str]] = None,
 ) -> TranscribeResult:
     """プログレス報告付きで文字起こしを実行
 
@@ -148,6 +151,8 @@ async def transcribe_with_progress(
         no_speech_threshold: 無音判定の閾値
         compression_ratio_threshold: 繰り返し検出の閾値
         vad_filter: 音声区間検出フィルタを使用
+        multilingual: マルチリンガルモード（フレーズ単位で言語検出）
+        languages: 言語ホワイトリスト（例: ["ja","en","ko"]）。マルチリンガルモード時のみ有効。
     """
     app_ctx = get_app_context(ctx)
 
@@ -165,7 +170,63 @@ async def transcribe_with_progress(
         # 文字起こし実行
         await ctx.report_progress(model_load_end, progress_end, "文字起こし中...")
 
-        # transcribeパラメータを構築
+        # マルチリンガルモード
+        if multilingual:
+            async def on_segment_complete(index, total, seg):
+                progress = model_load_end + int(
+                    (transcribe_end - model_load_end) * (index + 1) / total
+                )
+                await ctx.report_progress(
+                    progress, progress_end,
+                    f"マルチリンガル文字起こし中... ({index + 1}/{total}) [{seg.language}]"
+                )
+
+            # 同期コールバックでプログレス更新（asyncは使えないのでログのみ）
+            def sync_callback(index, total, seg):
+                logger.info(f"Segment {index+1}/{total}: {seg.language} ({seg.language_probability:.2f})")
+
+            merged_prompt = build_initial_prompt(initial_prompt)
+
+            ml_results = transcribe_multilingual(
+                file_path=file_path,
+                model=model,
+                initial_prompt=merged_prompt,
+                temperature=temperature,
+                no_speech_threshold=no_speech_threshold,
+                compression_ratio_threshold=compression_ratio_threshold,
+                languages=languages,
+                on_segment_complete=sync_callback,
+            )
+
+            await ctx.report_progress(transcribe_end, progress_end, f"文字起こし完了 ({len(ml_results)} セグメント)")
+
+            # 出力ディレクトリ作成
+            os.makedirs(output_path, exist_ok=True)
+
+            base_filename = os.path.splitext(os.path.basename(file_path))[0]
+            srt_file_path = os.path.join(output_path, f"{base_filename}_multilingual.srt")
+            srt_file_path = get_unique_filepath(srt_file_path)
+
+            with open(srt_file_path, 'w', encoding='utf-8') as f:
+                f.write(results_to_srt(ml_results))
+
+            logger.info(f"SRT saved: {srt_file_path}")
+
+            # 言語統計
+            lang_counts = {}
+            for seg in ml_results:
+                lang_counts[seg.language] = lang_counts.get(seg.language, 0) + 1
+
+            await ctx.report_progress(progress_end, progress_end, "完了")
+
+            return TranscribeResult(
+                success=True,
+                srt_path=srt_file_path,
+                detected_language=f"multilingual ({lang_counts})",
+                segment_count=len(ml_results),
+            )
+
+        # 通常モード: transcribeパラメータを構築
         transcribe_params = {
             'beam_size': 5,
             'word_timestamps': True,
@@ -325,6 +386,8 @@ async def transcribe_from_file(
     no_speech_threshold: float = 0.6,
     compression_ratio_threshold: float = 2.4,
     vad_filter: bool = True,
+    multilingual: bool = False,
+    languages: Optional[str] = None,
     ctx: Context = None,
 ) -> TranscribeResult:
     """ローカルの動画/音声ファイルから字幕を生成します。
@@ -341,6 +404,8 @@ async def transcribe_from_file(
         no_speech_threshold: 無音判定の閾値 (デフォルト: 0.6)
         compression_ratio_threshold: 繰り返し検出の閾値 (デフォルト: 2.4)
         vad_filter: 音声区間検出フィルタを使用 (デフォルト: True、ハルシネーション防止)
+        multilingual: マルチリンガルモード (デフォルト: False、フレーズ単位で言語自動検出)
+        languages: 言語ホワイトリスト (カンマ区切り、例: "ja,en,ko")。multilingual=True時のみ有効
 
     Returns:
         生成されたSRTファイルのパスと検出された言語情報
@@ -374,6 +439,8 @@ async def transcribe_from_file(
         no_speech_threshold=no_speech_threshold,
         compression_ratio_threshold=compression_ratio_threshold,
         vad_filter=vad_filter,
+        multilingual=multilingual,
+        languages=languages.split(',') if languages else None,
     )
 
 
@@ -390,6 +457,8 @@ async def transcribe_from_url(
     no_speech_threshold: float = 0.6,
     compression_ratio_threshold: float = 2.4,
     vad_filter: bool = True,
+    multilingual: bool = False,
+    languages: Optional[str] = None,
     ctx: Context = None,
 ) -> TranscribeResult:
     """URLから動画をダウンロードして字幕を生成します。
@@ -406,6 +475,8 @@ async def transcribe_from_url(
         no_speech_threshold: 無音判定の閾値 (デフォルト: 0.6)
         compression_ratio_threshold: 繰り返し検出の閾値 (デフォルト: 2.4)
         vad_filter: 音声区間検出フィルタを使用 (デフォルト: True、ハルシネーション防止)
+        multilingual: マルチリンガルモード (デフォルト: False、フレーズ単位で言語自動検出)
+        languages: 言語ホワイトリスト (カンマ区切り、例: "ja,en,ko")。multilingual=True時のみ有効
 
     Returns:
         生成されたSRTファイルのパスと検出された言語情報
@@ -445,6 +516,8 @@ async def transcribe_from_url(
             no_speech_threshold=no_speech_threshold,
             compression_ratio_threshold=compression_ratio_threshold,
             vad_filter=vad_filter,
+            multilingual=multilingual,
+            languages=languages.split(',') if languages else None,
         )
 
     except Exception as e:

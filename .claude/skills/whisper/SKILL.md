@@ -40,6 +40,8 @@ device: "cuda" or "cpu"（デフォルト: cuda）
 - `input_lang`: 入力言語（省略で自動検知）
 - `output_lang`: 翻訳先言語（省略で翻訳なし）
 - `initial_prompt`: 追加の専門用語ヒント（`initial_prompt.txt` の内容に追記される）
+- `multilingual`: マルチリンガルモード（フレーズ単位で言語自動検出）
+- `languages`: 言語ホワイトリスト（カンマ区切り、例: `"ja,en,ko,zh,fr"`）。`multilingual=true` 時のみ有効。候補外言語の検出時にホワイトリスト内の最高確率言語で再推論する。
 
 詳細パラメータは [parameters.md](references/parameters.md) を参照。
 

@@ -10,6 +10,7 @@ import srt
 from srt import Subtitle
 from faster_whisper import WhisperModel
 from tqdm import tqdm
+from multilingual_transcriber import transcribe_multilingual, results_to_srt
 
 
 def download_video(url: str, output_dir: str = 'output') -> (str, str, str):
@@ -85,6 +86,8 @@ def transcribe_video(
     no_speech_threshold: float = 0.6,
     compression_ratio_threshold: float = 2.4,
     vad_filter: bool = False,
+    multilingual: bool = False,
+    languages: list = None,
 ):
     """
     指定された動画ファイルをトランスクリプトし、結果をSRTファイルとして保存します。
@@ -103,6 +106,8 @@ def transcribe_video(
     no_speech_threshold (float): 無音判定の閾値（デフォルト: 0.6）
     compression_ratio_threshold (float): 繰り返し検出の閾値（デフォルト: 2.4）
     vad_filter (bool): 音声区間検出フィルタを使用（デフォルト: False）
+    multilingual (bool): マルチリンガルモード（フレーズ単位で言語検出、デフォルト: False）
+    languages (list): 言語ホワイトリスト（例: ["ja","en","ko"]）。マルチリンガルモード時のみ有効。
 
     """
     print(file_path)
@@ -115,6 +120,52 @@ def transcribe_video(
 
     model = WhisperModel(model_size, device=device, compute_type=compute_type)
 
+    # SRTファイルを保存するディレクトリ
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    base_filename = os.path.splitext(os.path.basename(file_path))[0]
+
+    # マルチリンガルモード
+    if multilingual:
+        lang_info = f" (languages: {','.join(languages)})" if languages else ""
+        print(f"Multilingual mode: transcribing with per-phrase language detection{lang_info}")
+
+        def on_progress(index, total, seg):
+            print(f"  [{index+1}/{total}] {seg.language} ({seg.language_probability:.2f}): {seg.text[:50]}")
+
+        ml_results = transcribe_multilingual(
+            file_path=file_path,
+            model=model,
+            initial_prompt=initial_prompt,
+            temperature=temperature,
+            no_speech_threshold=no_speech_threshold,
+            compression_ratio_threshold=compression_ratio_threshold,
+            languages=languages,
+            on_segment_complete=on_progress,
+        )
+
+        # 検出された言語の統計
+        lang_counts = {}
+        for seg in ml_results:
+            lang_counts[seg.language] = lang_counts.get(seg.language, 0) + 1
+        detected_lang = "multilingual"
+        print(f"Languages detected: {lang_counts}")
+
+        srt_file_path = os.path.join(
+            output_path, f"{base_filename}_{detected_lang}.srt")
+        srt_file_path = get_unique_filepath(srt_file_path)
+
+        with open(srt_file_path, 'w', encoding='utf-8') as f:
+            f.write(results_to_srt(ml_results))
+
+        # マルチリンガルモードでは翻訳は非対応（各セグメントの言語が異なるため）
+        if output_lang is not None:
+            print("Warning: Translation is not yet supported in multilingual mode")
+
+        return
+
+    # 通常モード
     # transcribeパラメータを構築
     transcribe_params = {
         'beam_size': 5,
@@ -143,11 +194,6 @@ def transcribe_video(
         print("Detected language '%s' with probability %f" %
               (info.language, info.language_probability))
 
-    # SRTファイルを保存するディレクトリ
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-
-    base_filename = os.path.splitext(os.path.basename(file_path))[0]
     srt_file_path = os.path.join(
         output_path, f"{base_filename}_{detected_lang}.srt")
     srt_file_path = get_unique_filepath(srt_file_path)
