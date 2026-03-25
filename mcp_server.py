@@ -85,6 +85,21 @@ async def app_lifespan(server: FastMCP):
         logger.info("Server shutting down")
 
 
+def load_initial_prompt_file() -> str:
+    """initial_prompt.txt からデフォルトのプロンプトを読み込む"""
+    prompt_file = Path(__file__).parent / "initial_prompt.txt"
+    if prompt_file.exists():
+        return prompt_file.read_text(encoding="utf-8").strip()
+    return ""
+
+
+def build_initial_prompt(additional: str = None) -> str:
+    """ファイルのデフォルトプロンプトとオプション指定を結合する"""
+    base = load_initial_prompt_file()
+    parts = [p for p in [base, additional] if p]
+    return ", ".join(parts) if parts else None
+
+
 # MCPサーバ初期化
 mcp = FastMCP("faster-whisper-mcp", lifespan=app_lifespan)
 
@@ -127,7 +142,7 @@ async def transcribe_with_progress(
         progress_start: プログレス開始値
         progress_end: プログレス終了値
         model_size: Whisperモデルサイズ
-        initial_prompt: 専門用語や固有名詞のヒントを提供するプロンプト
+        initial_prompt: 追加の専門用語ヒント（initial_prompt.txtの内容に追記される）
         condition_on_previous_text: 前のセグメントを参照して文脈維持
         temperature: 温度パラメータ（0.0で最も決定的）
         no_speech_threshold: 無音判定の閾値
@@ -161,8 +176,9 @@ async def transcribe_with_progress(
             'vad_filter': vad_filter,
         }
 
-        if initial_prompt:
-            transcribe_params['initial_prompt'] = initial_prompt
+        merged_prompt = build_initial_prompt(initial_prompt)
+        if merged_prompt:
+            transcribe_params['initial_prompt'] = merged_prompt
 
         if input_lang:
             transcribe_params['language'] = input_lang
@@ -319,7 +335,7 @@ async def transcribe_from_file(
         model_size: Whisperモデルサイズ (デフォルト: "large-v3")
         input_lang: 入力言語コード（省略時は自動検知）
         output_lang: 翻訳先言語コード（省略時は翻訳なし）
-        initial_prompt: 専門用語や固有名詞のヒントを提供するプロンプト
+        initial_prompt: 追加の専門用語ヒント（initial_prompt.txtの内容に追記される）
         condition_on_previous_text: 前のセグメントを参照して文脈維持 (デフォルト: False、ハルシネーション防止)
         temperature: 温度パラメータ（0.0で最も決定的、デフォルト: 0.0）
         no_speech_threshold: 無音判定の閾値 (デフォルト: 0.6)
@@ -384,7 +400,7 @@ async def transcribe_from_url(
         model_size: Whisperモデルサイズ (デフォルト: "large-v3")
         input_lang: 入力言語コード（省略時は自動検知）
         output_lang: 翻訳先言語コード（省略時は翻訳なし）
-        initial_prompt: 専門用語や固有名詞のヒントを提供するプロンプト
+        initial_prompt: 追加の専門用語ヒント（initial_prompt.txtの内容に追記される）
         condition_on_previous_text: 前のセグメントを参照して文脈維持 (デフォルト: False、ハルシネーション防止)
         temperature: 温度パラメータ（0.0で最も決定的、デフォルト: 0.0）
         no_speech_threshold: 無音判定の閾値 (デフォルト: 0.6)

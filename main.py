@@ -11,6 +11,22 @@ def setup(translate_to_lang: str = 'none'):
     translator = Translator(api_key, translate_to_lang)
     return translator
 
+def load_initial_prompt_file() -> str:
+    """initial_prompt.txt からデフォルトのプロンプトを読み込む"""
+    prompt_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'initial_prompt.txt')
+    if os.path.exists(prompt_file):
+        with open(prompt_file, 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    return ""
+
+
+def build_initial_prompt(additional: str = None) -> str:
+    """ファイルのデフォルトプロンプトとオプション指定を結合する"""
+    base = load_initial_prompt_file()
+    parts = [p for p in [base, additional] if p]
+    return ", ".join(parts) if parts else None
+
+
 def main():
     parser = argparse.ArgumentParser(description="Transcribe and translate videos.")
     parser.add_argument('input', type=str, help='URL or local path of the video')
@@ -19,7 +35,7 @@ def main():
     parser.add_argument('--input-lang', type=str, default=None, help='Input language code (default: auto-detect)')
     parser.add_argument('--output-lang', type=str, default=None, help='Output language code for translation (default: no translation)')
     # 精度向上オプション
-    parser.add_argument('--initial-prompt', type=str, default=None, help='Initial prompt with hints for specialized terms')
+    parser.add_argument('--initial-prompt', type=str, default=None, help='Additional initial prompt (appended to initial_prompt.txt)')
     parser.add_argument('--condition-on-previous-text', action='store_true', help='Enable conditioning on previous text (default: disabled to prevent hallucination)')
     parser.add_argument('--temperature', type=float, default=0.0, help='Temperature for sampling (default: 0.0)')
     parser.add_argument('--no-speech-threshold', type=float, default=0.6, help='No speech threshold (default: 0.6)')
@@ -33,7 +49,7 @@ def main():
     model_size = args.model
     input_lang = args.input_lang
     output_lang = args.output_lang
-    initial_prompt = args.initial_prompt
+    initial_prompt = build_initial_prompt(args.initial_prompt)
     condition_on_previous_text = args.condition_on_previous_text
     temperature = args.temperature
     no_speech_threshold = args.no_speech_threshold

@@ -35,22 +35,23 @@ uv run python build_script.py
 ## アーキテクチャ
 
 ```
-main.py          # CLI エントリーポイント
-mcp_server.py    # MCPサーバ
-genSrt.py        # 音声認識・SRT生成
-translator.py    # 翻訳処理（LangChain + OpenAI）
+main.py            # CLI エントリーポイント
+mcp_server.py      # MCPサーバ
+genSrt.py          # 音声認識・SRT生成
+translator.py      # 翻訳処理（LangChain + OpenAI）
 whisper_manager.py # モデル管理
+initial_prompt.txt # デフォルトの用語補正プロンプト
 ```
 
 ## MCPサーバ
 
 提供ツール: `transcribe_from_file`, `transcribe_from_url`, `get_supported_languages`
 
-パラメータ詳細は `skills/whisper/` を参照。
+パラメータ詳細は `.claude/skills/whisper/` を参照。
 
 ## Claude Skill
 
-`skills/whisper/` に文字起こしスキルを定義。MCPツール実行時の安定した動作を提供。
+`.claude/skills/whisper/` に文字起こしスキルを定義。MCPツール実行時の安定した動作を提供。
 
 ## 環境要件
 
