@@ -17,6 +17,12 @@ output/
 downloads/
 public/
 
+# Twitch→YouTube pipeline artifacts (keep scripts, ignore media/derived data)
+twitch_to_youtube/clips/
+twitch_to_youtube/transcripts/
+twitch_to_youtube/metadata/
+twitch_to_youtube/clips_index.json
+
 # Node
 node_modules/
 
