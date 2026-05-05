@@ -8,6 +8,7 @@
 - **Claude Skill対応** - `skills/whisper.skill` で安定した実行
 - **高速処理** - Faster Whisper (CTranslate2) による最適化された推論
 - **多言語対応** - 59言語の自動検出・翻訳
+- **マルチリンガル対応** - フレーズ単位で言語を自動検出し、多言語混在の音声を正確に文字起こし
 - **柔軟な入力** - ローカルファイル / URL（YouTube等）両対応
 - **GPU/CPU対応** - CUDA GPU または CPU で実行可能
 
@@ -80,6 +81,34 @@ python main.py video.mp4 --input-lang ja --output-lang en
 python main.py https://www.youtube.com/watch?v=xxxxx
 ```
 
+### マルチリンガルモード
+
+複数言語が混在する音声をフレーズ単位で言語検出しながら文字起こしします。
+
+```bash
+# 基本（全言語から自動検出）
+python main.py --multilingual video.mp4
+
+# 言語ホワイトリスト指定（誤検出を防ぎ精度向上）
+python main.py --multilingual --languages ja,en,ko,zh,fr video.mp4
+
+# 言語タグ付きSRT出力（[ja] こんにちは のように言語を明示）
+python main.py --multilingual --lang-tag video.mp4
+
+# 言語別にSRTファイルを分割出力
+python main.py --multilingual --split-by-language video.mp4
+
+# 全オプション組み合わせ + 日本語に翻訳
+python main.py --multilingual --languages ja,en,ko,zh --lang-tag --split-by-language --output-lang ja video.mp4
+```
+
+| オプション | 説明 |
+|-----------|------|
+| `--multilingual` | マルチリンガルモード有効化 |
+| `--languages` | 候補言語をカンマ区切りで指定。候補外の言語を検出した場合、候補内の最高確率言語で再推論 |
+| `--lang-tag` | 各セグメントに `[ja]` 等の言語タグを付与 |
+| `--split-by-language` | 言語ごとに個別のSRTファイルを出力 |
+
 主要オプション: `--device`, `--model`, `--input-lang`, `--output-lang`
 
 全オプションは `python main.py --help` で確認。
@@ -96,6 +125,7 @@ python main.py https://www.youtube.com/watch?v=xxxxx
 - **形式**: SRT
 - **出力先**: ローカルファイルは同ディレクトリ、URLは`output/`
 - **ファイル名**: `{元ファイル名}_{言語コード}.srt`
+- **マルチリンガル**: `{元ファイル名}_multilingual.srt`（`--split-by-language` 時は言語ごとに分割）
 
 ## ライセンス
 

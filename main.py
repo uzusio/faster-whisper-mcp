@@ -43,6 +43,8 @@ def main():
     parser.add_argument('--no-vad-filter', action='store_true', help='Disable VAD filter (default: enabled)')
     parser.add_argument('--multilingual', action='store_true', help='Enable multilingual mode: per-phrase language detection using VAD segmentation')
     parser.add_argument('--languages', type=str, default=None, help='Language whitelist for multilingual mode (comma-separated, e.g. "ja,en,ko,zh")')
+    parser.add_argument('--lang-tag', action='store_true', help='Add language tags to SRT output (e.g. [ja] こんにちは)')
+    parser.add_argument('--split-by-language', action='store_true', help='Output separate SRT files per detected language')
 
     args = parser.parse_args()
 
@@ -59,6 +61,8 @@ def main():
     vad_filter = not args.no_vad_filter
     multilingual = args.multilingual
     languages = args.languages.split(',') if args.languages else None
+    lang_tag = args.lang_tag
+    split_by_language = args.split_by_language
 
     translator = None
     if output_lang is not None:
@@ -94,6 +98,8 @@ def main():
         vad_filter,
         multilingual,
         languages,
+        lang_tag,
+        split_by_language,
     )
 
 if __name__ == "__main__":

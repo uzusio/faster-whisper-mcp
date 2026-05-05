@@ -10,7 +10,7 @@ import srt
 from srt import Subtitle
 from faster_whisper import WhisperModel
 from tqdm import tqdm
-from multilingual_transcriber import transcribe_multilingual, results_to_srt
+from multilingual_transcriber import transcribe_multilingual, results_to_srt, results_to_srt_by_language
 
 
 def download_video(url: str, output_dir: str = 'output') -> (str, str, str):
@@ -88,6 +88,8 @@ def transcribe_video(
     vad_filter: bool = False,
     multilingual: bool = False,
     languages: list = None,
+    lang_tag: bool = False,
+    split_by_language: bool = False,
 ):
     """
     指定された動画ファイルをトランスクリプトし、結果をSRTファイルとして保存します。
@@ -108,6 +110,8 @@ def transcribe_video(
     vad_filter (bool): 音声区間検出フィルタを使用（デフォルト: False）
     multilingual (bool): マルチリンガルモード（フレーズ単位で言語検出、デフォルト: False）
     languages (list): 言語ホワイトリスト（例: ["ja","en","ko"]）。マルチリンガルモード時のみ有効。
+    lang_tag (bool): 言語タグ付きSRT出力（例: [ja] こんにちは）。マルチリンガルモード時のみ有効。
+    split_by_language (bool): 言語別にSRTファイルを分割出力。マルチリンガルモード時のみ有効。
 
     """
     print(file_path)
@@ -157,11 +161,44 @@ def transcribe_video(
         srt_file_path = get_unique_filepath(srt_file_path)
 
         with open(srt_file_path, 'w', encoding='utf-8') as f:
-            f.write(results_to_srt(ml_results))
+            f.write(results_to_srt(ml_results, lang_tag=lang_tag))
 
-        # マルチリンガルモードでは翻訳は非対応（各セグメントの言語が異なるため）
-        if output_lang is not None:
-            print("Warning: Translation is not yet supported in multilingual mode")
+        # 言語別SRT分割出力
+        if split_by_language:
+            srt_by_lang = results_to_srt_by_language(ml_results)
+            for lang, srt_content in srt_by_lang.items():
+                lang_srt_path = os.path.join(
+                    output_path, f"{base_filename}_{lang}.srt")
+                lang_srt_path = get_unique_filepath(lang_srt_path)
+                with open(lang_srt_path, 'w', encoding='utf-8') as f:
+                    f.write(srt_content)
+                print(f"  Language SRT: {lang_srt_path}")
+
+        # マルチリンガル翻訳（検出言語と異なるセグメントのみ翻訳）
+        if output_lang is not None and translator is not None:
+            translated_results = []
+            for seg in ml_results:
+                if seg.language == output_lang:
+                    # 出力言語と同じなら翻訳不要
+                    translated_results.append(seg)
+                else:
+                    translated_text = translator.translation(seg.text)
+                    from multilingual_transcriber import TranscribedSegment
+                    translated_results.append(TranscribedSegment(
+                        index=seg.index,
+                        start=seg.start,
+                        end=seg.end,
+                        text=translated_text,
+                        language=output_lang,
+                        language_probability=seg.language_probability,
+                    ))
+
+            translated_srt_path = os.path.join(
+                output_path, f"{base_filename}_{output_lang}.srt")
+            translated_srt_path = get_unique_filepath(translated_srt_path)
+            with open(translated_srt_path, 'w', encoding='utf-8') as f:
+                f.write(results_to_srt(translated_results))
+            print(f"  Translated SRT: {translated_srt_path}")
 
         return
 

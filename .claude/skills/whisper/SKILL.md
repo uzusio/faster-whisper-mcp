@@ -42,8 +42,47 @@ device: "cuda" or "cpu"（デフォルト: cuda）
 - `initial_prompt`: 追加の専門用語ヒント（`initial_prompt.txt` の内容に追記される）
 - `multilingual`: マルチリンガルモード（フレーズ単位で言語自動検出）
 - `languages`: 言語ホワイトリスト（カンマ区切り、例: `"ja,en,ko,zh,fr"`）。`multilingual=true` 時のみ有効。候補外言語の検出時にホワイトリスト内の最高確率言語で再推論する。
+- `lang_tag`: 言語タグ付きSRT出力（例: `[ja] こんにちは`）。`multilingual=true` 時のみ有効。
+- `split_by_language`: 言語別にSRTファイルを分割出力。`multilingual=true` 時のみ有効。
+- `output_lang`: マルチリンガルモード時、検出言語と異なるセグメントのみ翻訳。同じ言語はそのまま保持。
 
 詳細パラメータは [parameters.md](references/parameters.md) を参照。
+
+## マルチリンガルモード
+
+複数言語が混在する音声を、フレーズ単位で言語検出しながら文字起こしする。
+
+### 使用例
+
+```
+この動画は日本語と英語が混在しています。マルチリンガルモードで文字起こしして: C:\Videos\meeting.mp4
+→ multilingual=true
+
+言語は日本語、英語、韓国語だけです
+→ multilingual=true, languages="ja,en,ko"
+
+言語タグ付きで出力して
+→ multilingual=true, lang_tag=true
+
+言語ごとにファイルを分けて
+→ multilingual=true, split_by_language=true
+
+全部日本語に翻訳して
+→ multilingual=true, output_lang="ja"
+  （検出言語がjaのセグメントはそのまま、他言語のみ翻訳）
+```
+
+### マルチリンガル結果報告
+
+成功時:
+```
+字幕ファイルを生成しました:
+- 原文: {srt_path}
+- 翻訳: {translated_srt_path}（翻訳時のみ）
+- 言語別SRT: {lang}_srt_path（split_by_language時のみ）
+- 検出言語: multilingual ({言語分布})
+- セグメント数: {segment_count}
+```
 
 ## initial_prompt（用語補正）
 

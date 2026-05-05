@@ -147,15 +147,52 @@ def transcribe_multilingual(
     return results
 
 
-def results_to_srt(segments: list[TranscribedSegment]) -> str:
-    """文字起こし結果をSRT文字列に変換する。"""
+def results_to_srt(
+    segments: list[TranscribedSegment],
+    lang_tag: bool = False,
+) -> str:
+    """文字起こし結果をSRT文字列に変換する。
+
+    Args:
+        segments: 文字起こし結果のリスト
+        lang_tag: Trueの場合、各セグメントに [ja] 等の言語タグを付与
+    """
     subs = []
     for seg in segments:
+        content = f"[{seg.language}] {seg.text}" if lang_tag else seg.text
         sub = Subtitle(
             index=seg.index,
             start=timedelta(seconds=seg.start),
             end=timedelta(seconds=seg.end),
-            content=seg.text,
+            content=content,
         )
         subs.append(sub)
     return srt.compose(subs)
+
+
+def results_to_srt_by_language(
+    segments: list[TranscribedSegment],
+) -> dict[str, str]:
+    """言語別にSRT文字列を生成する。
+
+    Returns:
+        {言語コード: SRT文字列} の辞書
+    """
+    by_lang: dict[str, list[TranscribedSegment]] = {}
+    for seg in segments:
+        by_lang.setdefault(seg.language, []).append(seg)
+
+    result = {}
+    for lang, segs in by_lang.items():
+        subs = []
+        for i, seg in enumerate(segs):
+            sub = Subtitle(
+                index=i + 1,
+                start=timedelta(seconds=seg.start),
+                end=timedelta(seconds=seg.end),
+                content=seg.text,
+            )
+            subs.append(sub)
+        result[lang] = srt.compose(subs)
+
+    return result

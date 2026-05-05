@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from whisper_manager import WhisperManager
 from genSrt import download_video, get_unique_filepath
 from translator import Translator
-from multilingual_transcriber import transcribe_multilingual, results_to_srt
+from multilingual_transcriber import transcribe_multilingual, results_to_srt, results_to_srt_by_language
 
 # ロギング設定
 logging.basicConfig(
@@ -132,6 +132,8 @@ async def transcribe_with_progress(
     vad_filter: bool = False,
     multilingual: bool = False,
     languages: Optional[list[str]] = None,
+    lang_tag: bool = False,
+    split_by_language: bool = False,
 ) -> TranscribeResult:
     """プログレス報告付きで文字起こしを実行
 
@@ -153,6 +155,8 @@ async def transcribe_with_progress(
         vad_filter: 音声区間検出フィルタを使用
         multilingual: マルチリンガルモード（フレーズ単位で言語検出）
         languages: 言語ホワイトリスト（例: ["ja","en","ko"]）。マルチリンガルモード時のみ有効。
+        lang_tag: 言語タグ付きSRT出力。マルチリンガルモード時のみ有効。
+        split_by_language: 言語別にSRTファイルを分割出力。マルチリンガルモード時のみ有効。
     """
     app_ctx = get_app_context(ctx)
 
@@ -208,9 +212,46 @@ async def transcribe_with_progress(
             srt_file_path = get_unique_filepath(srt_file_path)
 
             with open(srt_file_path, 'w', encoding='utf-8') as f:
-                f.write(results_to_srt(ml_results))
+                f.write(results_to_srt(ml_results, lang_tag=lang_tag))
 
             logger.info(f"SRT saved: {srt_file_path}")
+
+            # 言語別SRT分割出力
+            if split_by_language:
+                srt_by_lang = results_to_srt_by_language(ml_results)
+                for lang, srt_content in srt_by_lang.items():
+                    lang_srt_path = os.path.join(output_path, f"{base_filename}_{lang}.srt")
+                    lang_srt_path = get_unique_filepath(lang_srt_path)
+                    with open(lang_srt_path, 'w', encoding='utf-8') as f:
+                        f.write(srt_content)
+                    logger.info(f"Language SRT saved: {lang_srt_path}")
+
+            # マルチリンガル翻訳
+            translated_srt_path = None
+            if output_lang:
+                api_key = os.getenv("OPENAI_API_KEY")
+                if not api_key:
+                    logger.warning("OPENAI_API_KEY not set, skipping translation")
+                else:
+                    await ctx.report_progress(transcribe_end, progress_end, "翻訳中...")
+                    translator = Translator(api_key, output_lang)
+                    translated_results = []
+                    for seg in ml_results:
+                        if seg.language == output_lang:
+                            translated_results.append(seg)
+                        else:
+                            from multilingual_transcriber import TranscribedSegment
+                            translated_text = translator.translation(seg.text)
+                            translated_results.append(TranscribedSegment(
+                                index=seg.index, start=seg.start, end=seg.end,
+                                text=translated_text, language=output_lang,
+                                language_probability=seg.language_probability,
+                            ))
+                    translated_srt_path = os.path.join(output_path, f"{base_filename}_{output_lang}.srt")
+                    translated_srt_path = get_unique_filepath(translated_srt_path)
+                    with open(translated_srt_path, 'w', encoding='utf-8') as f:
+                        f.write(results_to_srt(translated_results))
+                    logger.info(f"Translated SRT saved: {translated_srt_path}")
 
             # 言語統計
             lang_counts = {}
@@ -222,6 +263,7 @@ async def transcribe_with_progress(
             return TranscribeResult(
                 success=True,
                 srt_path=srt_file_path,
+                translated_srt_path=translated_srt_path,
                 detected_language=f"multilingual ({lang_counts})",
                 segment_count=len(ml_results),
             )
@@ -388,6 +430,8 @@ async def transcribe_from_file(
     vad_filter: bool = True,
     multilingual: bool = False,
     languages: Optional[str] = None,
+    lang_tag: bool = False,
+    split_by_language: bool = False,
     ctx: Context = None,
 ) -> TranscribeResult:
     """ローカルの動画/音声ファイルから字幕を生成します。
@@ -406,6 +450,8 @@ async def transcribe_from_file(
         vad_filter: 音声区間検出フィルタを使用 (デフォルト: True、ハルシネーション防止)
         multilingual: マルチリンガルモード (デフォルト: False、フレーズ単位で言語自動検出)
         languages: 言語ホワイトリスト (カンマ区切り、例: "ja,en,ko")。multilingual=True時のみ有効
+        lang_tag: 言語タグ付きSRT出力 (例: [ja] こんにちは)。multilingual=True時のみ有効
+        split_by_language: 言語別にSRTファイルを分割出力。multilingual=True時のみ有効
 
     Returns:
         生成されたSRTファイルのパスと検出された言語情報
@@ -441,6 +487,8 @@ async def transcribe_from_file(
         vad_filter=vad_filter,
         multilingual=multilingual,
         languages=languages.split(',') if languages else None,
+        lang_tag=lang_tag,
+        split_by_language=split_by_language,
     )
 
 
@@ -459,6 +507,8 @@ async def transcribe_from_url(
     vad_filter: bool = True,
     multilingual: bool = False,
     languages: Optional[str] = None,
+    lang_tag: bool = False,
+    split_by_language: bool = False,
     ctx: Context = None,
 ) -> TranscribeResult:
     """URLから動画をダウンロードして字幕を生成します。
@@ -518,6 +568,8 @@ async def transcribe_from_url(
             vad_filter=vad_filter,
             multilingual=multilingual,
             languages=languages.split(',') if languages else None,
+            lang_tag=lang_tag,
+            split_by_language=split_by_language,
         )
 
     except Exception as e:

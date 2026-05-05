@@ -16,6 +16,8 @@
 | vad_filter | bool | True | 音声区間検出フィルタ |
 | multilingual | bool | False | マルチリンガルモード（VAD+フレーズ単位言語検出） |
 | languages | str | None | 言語ホワイトリスト（カンマ区切り、例: `"ja,en,ko"`）。multilingual時のみ有効 |
+| lang_tag | bool | False | 言語タグ付きSRT出力（例: `[ja] こんにちは`）。multilingual時のみ有効 |
+| split_by_language | bool | False | 言語別にSRTファイルを分割出力。multilingual時のみ有効 |
 
 ## 戻り値
 
