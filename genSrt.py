@@ -23,6 +23,9 @@ def download_video(url: str, output_dir: str = 'output') -> (str, str, str):
 
     Returns:
     tuple: ダウンロードされた動画のタイトル、拡張子、タイムスタンプを含むタプル。
+
+    Raises:
+    RuntimeError: yt-dlp が失敗した場合、またはダウンロード済みファイルが見つからない場合。
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -38,11 +41,26 @@ def download_video(url: str, output_dir: str = 'output') -> (str, str, str):
     ]
 
     result = subprocess.run(command, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, text=True)
-    video_info = json.loads(result.stdout)
-    # print(video_info)
+                            stderr=subprocess.PIPE, text=True, encoding='utf-8')
+    if result.returncode != 0:
+        stderr_tail = '\n'.join(result.stderr.strip().splitlines()[-5:])
+        raise RuntimeError(
+            f'yt-dlp によるダウンロードが失敗しました (exit code {result.returncode}):\n{stderr_tail}')
 
-    return video_info['title'],  video_info['ext'], timestamp
+    video_info = json.loads(result.stdout)
+
+    # --print-json はダウンロード開始時点の情報のため、ext がマージ後の実ファイルと食い違うことがある
+    ext = video_info['ext']
+    if not os.path.exists(os.path.join(output_dir, f'{timestamp}.{ext}')):
+        candidates = [f for f in os.listdir(output_dir)
+                      if re.fullmatch(rf'{timestamp}\.\w+', f)]
+        if not candidates:
+            raise RuntimeError(
+                f'yt-dlp は正常終了しましたが出力ファイルが見つかりません: '
+                f'{os.path.join(output_dir, f"{timestamp}.{ext}")}')
+        ext = os.path.splitext(candidates[0])[1][1:]
+
+    return video_info['title'], ext, timestamp
 
 
 def result2subs(segments, desc="字幕生成"):
